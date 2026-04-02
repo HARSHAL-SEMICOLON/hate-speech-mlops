@@ -5,62 +5,151 @@ import numpy as np
 import pickle
 from fastapi.middleware.cors import CORSMiddleware
 
+# ================================
 # 1. Initialize FastAPI
-app = FastAPI(title="Hate Speech Detection API")
+# ================================
 
-# 2. Enable CORS (Allows your Netlify site to talk to this API)
+app = FastAPI(title="NLP Moderation Core API")
+
+# ================================
+# 2. Enable CORS
+# ================================
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], 
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# 3. Load the ONNX Model and Vectorizer
+# ================================
+# 3. Load Model + Vectorizer
+# ================================
+
 try:
-    # Load ONNX session
+    # Load ONNX model
     ort_session = ort.InferenceSession("model.onnx")
-    
-    # Load the vectorizer (ensure this file is in your GitHub repo)
+
+    # Load vectorizer
     with open("pytorch_vectorizer.pkl", "rb") as f:
         vectorizer = pickle.load(f)
-except Exception as e:
-    print(f"Error loading model artifacts: {e}")
 
-# 4. Define Request Model
+    print("✅ Model and Vectorizer loaded successfully.")
+
+except Exception as e:
+    print(f"❌ CRITICAL ERROR during startup: {e}")
+    raise e
+
+
+# ================================
+# 4. Request Schema
+# ================================
+
 class TextRequest(BaseModel):
     text: str
 
-# 5. Prediction Logic
-@app.post("/predict")
-async def predict(request: TextRequest):
-    try:
-        # Preprocess text using the loaded vectorizer
-        text_vectorized = vectorizer.transform([request.text]).toarray().astype(np.float32)
 
-        # Run ONNX Inference
-        ort_inputs = {ort_session.get_inputs()[0].name: text_vectorized}
+# ================================
+# 5. Prediction Endpoint
+# ================================
+
+@app.post("/predict")
+async def analyze_text(request: TextRequest):
+
+    try:
+        # ----------------------------
+        # Step A: Vectorize Text
+        # ----------------------------
+
+        text_vectorized = (
+            vectorizer
+            .transform([request.text])
+            .toarray()
+            .astype(np.float32)
+        )
+
+        # ----------------------------
+        # Step B: Run ONNX Model
+        # ----------------------------
+
+        ort_inputs = {
+            ort_session.get_inputs()[0].name: text_vectorized
+        }
+
         ort_outs = ort_session.run(None, ort_inputs)
 
-        # FIX: Safely extract the scalar probability value
-        # This handles the 'TypeError: only 0-dimensional arrays' bug
-        probability = float(ort_outs[0].flatten()[0])
+        raw_output = ort_outs[0]
 
-        # Classification threshold
-        prediction = "Hate Speech" if probability > 0.5 else "Safe"
-        confidence = round(probability * 100, 2) if prediction == "Hate Speech" else round((1 - probability) * 100, 2)
+        # Debug logs (very helpful on Render)
+        print("RAW OUTPUT:", raw_output)
+        print("OUTPUT SHAPE:", raw_output.shape)
+
+        # ----------------------------
+        # Step C: Extract Probability
+        # ----------------------------
+
+        if len(raw_output.shape) == 1:
+            # Example: [0.87]
+            probability = float(raw_output[0])
+
+        elif raw_output.shape[1] == 1:
+            # Example: [[0.87]]
+            probability = float(raw_output[0][0])
+
+        else:
+            # Example: [[0.12, 0.88]]
+            # Assume index 1 = Hate Speech
+            probability = float(raw_output[0][1])
+
+        # ----------------------------
+        # Step D: Prediction Logic
+        # ----------------------------
+
+        prediction = (
+            "Hate Speech"
+            if probability > 0.5
+            else "Safe"
+        )
+
+        # Confidence calculation
+        conf_score = (
+            probability
+            if prediction == "Hate Speech"
+            else (1 - probability)
+        )
+
+        confidence = f"{round(conf_score * 100, 2)}%"
+
+        # ----------------------------
+        # Step E: Response
+        # ----------------------------
 
         return {
             "prediction": prediction,
-            "confidence": f"{confidence}%",
-            "raw_score": float(probability)
+            "confidence": confidence,
+            "raw_score": probability
         }
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
 
-# 6. Root Health Check
+        print(f"⚠️ Inference Error: {e}")
+
+        raise HTTPException(
+            status_code=500,
+            detail=str(e)
+        )
+
+
+# ================================
+# 6. Health Check Endpoint
+# ================================
+
 @app.get("/")
 async def root():
-    return {"status": "Online", "model": "ONNX Moderation Core"}
+
+    return {
+        "status": "Online",
+        "engine": "ONNX Runtime",
+        "version": "1.0.0"
+    }
