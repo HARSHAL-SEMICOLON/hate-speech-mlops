@@ -28,10 +28,10 @@ app.add_middleware(
 # ================================
 
 try:
-    # Load ONNX model
+    print("🔄 Loading model...")
+
     ort_session = ort.InferenceSession("model.onnx")
 
-    # Load vectorizer
     with open("pytorch_vectorizer.pkl", "rb") as f:
         vectorizer = pickle.load(f)
 
@@ -58,8 +58,9 @@ class TextRequest(BaseModel):
 async def analyze_text(request: TextRequest):
 
     try:
+
         # ----------------------------
-        # Step A: Vectorize Text
+        # Step A: Vectorize text
         # ----------------------------
 
         text_vectorized = (
@@ -70,59 +71,54 @@ async def analyze_text(request: TextRequest):
         )
 
         # ----------------------------
-        # Step B: Run ONNX Model
+        # Step B: Run ONNX inference
         # ----------------------------
 
+        input_name = ort_session.get_inputs()[0].name
+
         ort_inputs = {
-            ort_session.get_inputs()[0].name: text_vectorized
+            input_name: text_vectorized
         }
 
         ort_outs = ort_session.run(None, ort_inputs)
 
         raw_output = ort_outs[0]
 
-        # Debug logs (very helpful on Render)
+        # Debug logs (important)
         print("RAW OUTPUT:", raw_output)
         print("OUTPUT SHAPE:", raw_output.shape)
 
         # ----------------------------
-        # Step C: Extract Probability
+        # Step C: Extract probability safely
         # ----------------------------
 
+        # Case 1: shape (1,)
         if len(raw_output.shape) == 1:
-            # Example: [0.87]
             probability = float(raw_output[0])
 
+        # Case 2: shape (1,1)
         elif raw_output.shape[1] == 1:
-            # Example: [[0.87]]
             probability = float(raw_output[0][0])
 
+        # Case 3: shape (1,2) → most common
         else:
-            # Example: [[0.12, 0.88]]
-            # Assume index 1 = Hate Speech
             probability = float(raw_output[0][1])
 
         # ----------------------------
-        # Step D: Prediction Logic
+        # Step D: Classification logic
         # ----------------------------
 
-        prediction = (
-            "Hate Speech"
-            if probability > 0.5
-            else "Safe"
-        )
+        if probability > 0.5:
+            prediction = "Hate Speech"
+            confidence_score = probability
+        else:
+            prediction = "Safe"
+            confidence_score = 1 - probability
 
-        # Confidence calculation
-        conf_score = (
-            probability
-            if prediction == "Hate Speech"
-            else (1 - probability)
-        )
-
-        confidence = f"{round(conf_score * 100, 2)}%"
+        confidence = f"{round(confidence_score * 100, 2)}%"
 
         # ----------------------------
-        # Step E: Response
+        # Step E: Return response
         # ----------------------------
 
         return {
@@ -133,7 +129,7 @@ async def analyze_text(request: TextRequest):
 
     except Exception as e:
 
-        print(f"⚠️ Inference Error: {e}")
+        print("⚠️ Inference Error:", e)
 
         raise HTTPException(
             status_code=500,
@@ -142,7 +138,7 @@ async def analyze_text(request: TextRequest):
 
 
 # ================================
-# 6. Health Check Endpoint
+# 6. Health Check
 # ================================
 
 @app.get("/")
