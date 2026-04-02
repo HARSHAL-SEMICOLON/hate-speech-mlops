@@ -48,15 +48,15 @@ async def analyze_text(request: TextRequest):
         input_name = ort_session.get_inputs()[0].name
         ort_outs = ort_session.run(None, {input_name: text_vectorized})
 
-        # Step C: THE FIX (Scalar Extraction)
-        # We flatten EVERYTHING to a 1D list and take the LAST value
-        # This handles shapes like (1,1), (1,2), or (1,) automatically
+        # --- THE ABSOLUTE FIX FOR LINE 61 ---
+        # We flatten the output to a 1D list and use .item()
+        # .item() is the ONLY way to satisfy Python 3.14's strict scalar rules
         raw_output = ort_outs[0].flatten()
         
-        # If your model has 2 outputs [Safe, Hate], take index 1. 
+        # If model has 2 outputs [Safe, Hate], take index 1. 
         # If it has 1 output [Hate], take index 0.
         prob_index = 1 if len(raw_output) > 1 else 0
-        probability = raw_output[prob_index].item() # .item() is the key fix
+        probability = raw_output[prob_index].item() 
 
         # Step D: Result Formatting
         prediction = "Hate Speech" if probability > 0.5 else "Safe"
