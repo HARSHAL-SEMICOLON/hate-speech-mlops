@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Hate Speech Detection System</title>
+    <title>Hate Speech Detection System | MLOps Edition</title>
     <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -26,7 +26,7 @@
         body {
             background-color: var(--bg-color);
             color: #ffffff;
-            overflow: hidden;
+            overflow-x: hidden;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -34,9 +34,8 @@
             min-height: 100vh;
         }
 
-        /* Particle Background */
         canvas {
-            position: absolute;
+            position: fixed;
             top: 0;
             left: 0;
             width: 100%;
@@ -44,7 +43,6 @@
             z-index: -1;
         }
 
-        /* Typography */
         h1 {
             font-size: 2.5rem;
             text-align: center;
@@ -54,7 +52,6 @@
             animation: float 6s ease-in-out infinite;
         }
 
-        /* Glassmorphism Cards */
         .card {
             background: var(--glass-bg);
             backdrop-filter: blur(16px);
@@ -62,18 +59,13 @@
             border: 1px solid var(--glass-border);
             border-radius: 20px;
             padding: 30px;
-            width: 90%;
+            width: 95%;
             max-width: 600px;
-            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5), inset 0 0 15px rgba(255, 255, 255, 0.02);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5);
             position: relative;
             z-index: 1;
         }
 
-        .input-card {
-            animation: float 5s ease-in-out infinite alternate;
-        }
-
-        /* Inputs & Buttons */
         textarea {
             width: 100%;
             height: 120px;
@@ -86,12 +78,11 @@
             resize: none;
             outline: none;
             transition: all 0.3s ease;
-            box-shadow: inset 0 0 10px rgba(0,0,0,0.5);
         }
 
         textarea:focus {
             border-color: var(--cyan);
-            box-shadow: inset 0 0 10px rgba(0, 243, 255, 0.2), 0 0 15px rgba(0, 243, 255, 0.2);
+            box-shadow: 0 0 15px rgba(0, 243, 255, 0.2);
         }
 
         button {
@@ -108,8 +99,6 @@
             text-transform: uppercase;
             letter-spacing: 2px;
             transition: transform 0.2s, box-shadow 0.2s;
-            position: relative;
-            overflow: hidden;
         }
 
         button:hover {
@@ -117,25 +106,15 @@
             box-shadow: 0 0 20px var(--cyan), 0 0 40px var(--purple);
         }
 
-        button:active {
-            transform: translateY(2px);
-        }
-
-        /* Result Card */
         .result-card {
             margin-top: 30px;
             text-align: center;
-            opacity: 0;
-            transform: translateY(-50px) scale(0.9);
             display: none;
-            transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
 
         .result-card.show {
             display: block;
-            opacity: 1;
-            transform: translateY(0) scale(1);
-            animation: floatResult 4s ease-in-out infinite alternate;
+            animation: fadeIn 0.5s ease;
         }
 
         .status-text {
@@ -145,21 +124,6 @@
             text-transform: uppercase;
         }
 
-        /* Dynamic Glows */
-        .glow-safe {
-            box-shadow: 0 0 30px rgba(0, 255, 136, 0.3), inset 0 0 20px rgba(0, 255, 136, 0.1);
-            border-color: var(--safe);
-        }
-        .glow-hate {
-            box-shadow: 0 0 30px rgba(255, 0, 60, 0.4), inset 0 0 20px rgba(255, 0, 60, 0.1);
-            border-color: var(--hate);
-            animation: pulseHate 2s infinite;
-        }
-
-        .text-safe { color: var(--safe); text-shadow: 0 0 10px var(--safe); }
-        .text-hate { color: var(--hate); text-shadow: 0 0 10px var(--hate); }
-
-        /* Circular Progress */
         .progress-container {
             position: relative;
             width: 120px;
@@ -167,64 +131,22 @@
             margin: 0 auto;
         }
         
-        .progress-ring {
-            transform: rotate(-90deg);
-            width: 100%;
-            height: 100%;
-        }
-
-        .progress-ring-circle-bg {
-            fill: transparent;
-            stroke: rgba(255,255,255,0.1);
-            stroke-width: 8;
-        }
-
+        .progress-ring { transform: rotate(-90deg); width: 100%; height: 100%; }
+        .progress-ring-circle-bg { fill: transparent; stroke: rgba(255,255,255,0.1); stroke-width: 8; }
         .progress-ring-circle {
-            fill: transparent;
-            stroke-width: 8;
-            stroke-dasharray: 314; /* 2 * pi * r (approx 50) */
-            stroke-dashoffset: 314;
-            stroke-linecap: round;
-            transition: stroke-dashoffset 1.5s ease-in-out;
+            fill: transparent; stroke-width: 8; stroke-dasharray: 314; stroke-dashoffset: 314;
+            stroke-linecap: round; transition: stroke-dashoffset 1.5s ease-in-out;
         }
 
-        .progress-text {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            font-size: 1.5rem;
-            font-weight: 700;
-        }
+        .progress-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 1.5rem; font-weight: 700; }
+        .text-safe { color: var(--safe); text-shadow: 0 0 10px var(--safe); }
+        .text-hate { color: var(--hate); text-shadow: 0 0 10px var(--hate); }
+        .glow-safe { border-color: var(--safe); box-shadow: 0 0 30px rgba(0, 255, 136, 0.2); }
+        .glow-hate { border-color: var(--hate); box-shadow: 0 0 30px rgba(255, 0, 60, 0.3); }
 
-        /* Animations */
-        @keyframes float {
-            0% { transform: translateY(0px); }
-            100% { transform: translateY(-15px); }
-        }
-
-        @keyframes floatResult {
-            0% { transform: translateY(0px); }
-            100% { transform: translateY(-8px); }
-        }
-
-        @keyframes pulseHate {
-            0% { box-shadow: 0 0 20px rgba(255, 0, 60, 0.3); }
-            50% { box-shadow: 0 0 50px rgba(255, 0, 60, 0.6); }
-            100% { box-shadow: 0 0 20px rgba(255, 0, 60, 0.3); }
-        }
-
-        /* Loader */
-        .loader {
-            display: none;
-            margin-top: 15px;
-            color: var(--cyan);
-            font-size: 0.9rem;
-            letter-spacing: 2px;
-            animation: blink 1s infinite;
-        }
+        .loader { display: none; margin-top: 15px; color: var(--cyan); letter-spacing: 2px; animation: blink 1s infinite; }
         @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
-
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
     </style>
 </head>
 <body>
@@ -233,15 +155,14 @@
 
     <h1>NLP MODERATION CORE</h1>
 
-    <div class="card input-card">
-        <textarea id="textInput" placeholder="Enter social media comment here for analysis..."></textarea>
+    <div class="card">
+        <textarea id="textInput" placeholder="Enter comment for AI analysis..."></textarea>
         <button id="analyzeBtn" onclick="analyzeText()">Analyze Data</button>
-        <div id="loading" class="loader">PROCESSING NEURAL NETWORK...</div>
+        <div id="loading" class="loader">SYNCING CLOUD NEURAL ENGINE...</div>
     </div>
 
     <div class="card result-card" id="resultCard">
         <div class="status-text" id="statusText">Safe Content</div>
-        
         <div class="progress-container">
             <svg class="progress-ring">
                 <circle class="progress-ring-circle-bg" cx="60" cy="60" r="50"></circle>
@@ -249,66 +170,10 @@
             </svg>
             <div class="progress-text" id="confidenceText">0%</div>
         </div>
-        <p style="margin-top: 15px; font-size: 0.8rem; color: rgba(255,255,255,0.5);">CONFIDENCE SCORE</p>
+        <p style="margin-top: 15px; font-size: 0.8rem; color: rgba(255,255,255,0.5);">AI CONFIDENCE SCORE</p>
     </div>
 
     <script>
-        // --- Particle Background System ---
-        const canvas = document.getElementById('particles');
-        const ctx = canvas.getContext('2d');
-        let particlesArray = [];
-
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
-
-        class Particle {
-            constructor() {
-                this.x = Math.random() * canvas.width;
-                this.y = Math.random() * canvas.height;
-                this.size = Math.random() * 2;
-                this.speedY = (Math.random() * 0.5) - 0.25;
-                this.speedX = (Math.random() * 0.5) - 0.25;
-                this.color = Math.random() > 0.5 ? '#00f3ff' : '#b026ff';
-            }
-            update() {
-                this.x += this.speedX;
-                this.y += this.speedY;
-                if (this.y < 0) this.y = canvas.height;
-                if (this.y > canvas.height) this.y = 0;
-                if (this.x < 0) this.x = canvas.width;
-                if (this.x > canvas.width) this.x = 0;
-            }
-            draw() {
-                ctx.fillStyle = this.color;
-                ctx.beginPath();
-                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-                ctx.fill();
-            }
-        }
-
-        function initParticles() {
-            for (let i = 0; i < 100; i++) {
-                particlesArray.push(new Particle());
-            }
-        }
-
-        function animateParticles() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            for (let i = 0; i < particlesArray.length; i++) {
-                particlesArray[i].update();
-                particlesArray[i].draw();
-            }
-            requestAnimationFrame(animateParticles);
-        }
-
-        initParticles();
-        animateParticles();
-
-        window.addEventListener('resize', () => {
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
-        });
-
         // --- Core Application Logic ---
         async function analyzeText() {
             const text = document.getElementById("textInput").value;
@@ -317,38 +182,31 @@
             const resultCard = document.getElementById("resultCard");
 
             if (!text.trim()) {
-                alert("Please enter some text to analyze.");
+                alert("Input required for analysis.");
                 return;
             }
 
-            // UI Loading State
             btn.style.display = "none";
             loader.style.display = "block";
             resultCard.classList.remove('show');
 
             try {
-                // 🔌 LOCAL FASTAPI URL
+                // 🚀 PRODUCTION RENDER ENDPOINT
                 const API_URL = "https://hate-speech-mlops.onrender.com/predict";
 
                 const response = await fetch(API_URL, {
                     method: "POST",
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify({text: text})
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ text: text })
                 });
                 
-                if (!response.ok) throw new Error("Backend not reachable");
+                if (!response.ok) throw new Error("Cloud Wake-up Initialized");
                 const data = await response.json();
-                
-                // Call UI update with real data from PyTorch
                 updateUI(data.prediction, data.confidence);
 
             } catch (error) {
-                console.error("Error connecting to Local API:", error);
-                alert("Could not connect to the AI backend. Please ensure your local FastAPI server is running in your terminal using 'uvicorn main:app --reload'.");
-                
-                // Reset UI buttons if it fails
+                console.error("Endpoint Connection:", error);
+                alert("System is initializing. Cloud servers are currently waking up from idle state. Please re-run analysis in 30 seconds.");
                 loader.style.display = "none";
                 btn.style.display = "block";
             }
@@ -362,60 +220,48 @@
             const circle = document.getElementById("progressCircle");
             const confidenceText = document.getElementById("confidenceText");
 
-            // Reset UI States
             loader.style.display = "none";
             btn.style.display = "block";
-            resultCard.className = "card result-card show";
+            resultCard.classList.add('show');
 
-            // Parse confidence to number
-            let confValue = parseFloat(confidenceStr);
-            if (isNaN(confValue)) confValue = 95.5; 
+            let confValue = parseFloat(confidenceStr) || 98.2;
 
-            // Apply specific styling based on prediction
             if (prediction.toLowerCase().includes("hate")) {
-                resultCard.classList.add("glow-hate");
-                resultCard.classList.remove("glow-safe");
+                resultCard.className = "card result-card show glow-hate";
                 statusText.innerText = "⚠️ Hate Speech Detected";
                 statusText.className = "status-text text-hate";
                 circle.style.stroke = "var(--hate)";
             } else {
-                resultCard.classList.add("glow-safe");
-                resultCard.classList.remove("glow-hate");
+                resultCard.className = "card result-card show glow-safe";
                 statusText.innerText = "✅ Safe Content";
                 statusText.className = "status-text text-safe";
                 circle.style.stroke = "var(--safe)";
             }
 
-            // Animate Circular Progress
-            const radius = circle.r.baseVal.value;
+            const radius = 50;
             const circumference = 2 * Math.PI * radius;
             const offset = circumference - (confValue / 100) * circumference;
-            
-            circle.style.strokeDasharray = `${circumference} ${circumference}`;
-            
-            // Force reflow before applying new offset for animation
-            circle.style.strokeDashoffset = circumference;
-            setTimeout(() => {
-                circle.style.strokeDashoffset = offset;
-            }, 100);
-
-            // Animate number counter
-            animateValue(confidenceText, 0, confValue, 1000);
+            circle.style.strokeDashoffset = offset;
+            confidenceText.innerText = confValue.toFixed(1) + "%";
         }
 
-        // Number counter animation
-        function animateValue(obj, start, end, duration) {
-            let startTimestamp = null;
-            const step = (timestamp) => {
-                if (!startTimestamp) startTimestamp = timestamp;
-                const progress = Math.min((timestamp - startTimestamp) / duration, 1);
-                obj.innerHTML = (progress * (end - start) + start).toFixed(1) + "%";
-                if (progress < 1) {
-                    window.requestAnimationFrame(step);
-                }
-            };
-            window.requestAnimationFrame(step);
+        // --- Simple Particle BG ---
+        const canvas = document.getElementById('particles');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        let pArray = [];
+        class P {
+            constructor() {
+                this.x = Math.random()*canvas.width; this.y = Math.random()*canvas.height;
+                this.s = Math.random()*2; this.sx = Math.random()-0.5; this.sy = Math.random()-0.5;
+            }
+            update() { this.x+=this.sx; this.y+=this.sy; if(this.x<0||this.x>canvas.width)this.sx*=-1; if(this.y<0||this.y>canvas.height)this.sy*=-1; }
+            draw() { ctx.fillStyle = 'rgba(0, 243, 255, 0.3)'; ctx.beginPath(); ctx.arc(this.x, this.y, this.s, 0, Math.PI*2); ctx.fill(); }
         }
+        function init() { for(let i=0; i<80; i++) pArray.push(new P()); }
+        function loop() { ctx.clearRect(0,0,canvas.width,canvas.height); pArray.forEach(p=>{p.update();p.draw();}); requestAnimationFrame(loop); }
+        init(); loop();
     </script>
 </body>
 </html>
