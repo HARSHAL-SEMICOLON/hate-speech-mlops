@@ -1,0 +1,23 @@
+artifact_path: file:D:/HATE SPEECH/mlruns/1/models/m-a6dd63454d474cc2beb9569d39c272ae/artifacts
+flavors:
+  python_function:
+    config:
+      device: null
+    data: data
+    env:
+      conda: conda.yaml
+      virtualenv: python_env.yaml
+    loader_module: mlflow.pytorch
+    pickle_module_name: mlflow.pytorch.pickle_module
+    python_version: 3.14.0
+  pytorch:
+    code: null
+    model_data: data
+    pytorch_version: 2.10.0+cpu
+mlflow_version: 3.10.1
+model_id: m-a6dd63454d474cc2beb9569d39c272ae
+model_size_bytes: 2566757
+model_uuid: m-a6dd63454d474cc2beb9569d39c272ae
+prompts: null
+run_id: bca6a05889c74f3cb1a76f74d7e12c59
+utc_time_created: '2026-04-02 06:44:44.167933'
